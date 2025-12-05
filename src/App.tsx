@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState, useRef, useCallback } from 'react'
 import './App.css'
 
 const WORD_LENGTH = 4
@@ -213,7 +213,7 @@ function App() {
   const [gameId, setGameId] = useState(0)
   const toastIdRef = useRef(0)
 
-  const showToast = (message: string, type: ToastType = 'error') => {
+  const showToast = useCallback((message: string, type: ToastType = 'error') => {
     const id = toastIdRef.current++
     const newToast: Toast = { id, message, type }
     setToasts((prev) => [...prev, newToast])
@@ -221,23 +221,23 @@ function App() {
     setTimeout(() => {
       setToasts((prev) => prev.filter((toast) => toast.id !== id))
     }, 2500)
-  }
+  }, [])
 
-  const handleAddLetter = (letter: string) => {
+  const handleAddLetter = useCallback((letter: string) => {
     if (gameStatus !== 'playing') return
     if (currentGuess.length >= WORD_LENGTH) return
 
     setCurrentGuess((prev) => `${prev}${letter}`)
-  }
+  }, [gameStatus, currentGuess.length])
 
-  const handleBackspace = () => {
+  const handleBackspace = useCallback(() => {
     if (gameStatus !== 'playing') return
     if (!currentGuess.length) return
 
     setCurrentGuess((prev) => prev.slice(0, -1))
-  }
+  }, [gameStatus, currentGuess.length])
 
-  const handleSubmitGuess = () => {
+  const handleSubmitGuess = useCallback(() => {
     if (gameStatus !== 'playing') return
 
     const guess = currentGuess.toUpperCase()
@@ -257,15 +257,22 @@ function App() {
       return
     }
 
+    if (guesses.includes(guess)) {
+      showToast('Already tried that word', 'error')
+      setShake(true)
+      setTimeout(() => setShake(false), 400)
+      return
+    }
+
     const nextGuesses = [...guesses, guess]
     const rowIndex = guesses.length
-
+    
     setFlippingRow(rowIndex)
     setTimeout(() => {
       if (currentGameId !== gameId) return
       setFlippingRow(null)
     }, 500 * WORD_LENGTH)
-
+    
     setGuesses(nextGuesses)
     setCurrentGuess('')
     setMessage(null)
@@ -289,7 +296,7 @@ function App() {
         showToast(`Game over! The word was ${solution}`, 'info')
       }, 500 * WORD_LENGTH + 100)
     }
-  }
+  }, [gameStatus, currentGuess, gameId, guesses, solution, showToast])
 
   const handleVirtualKey = (key: string) => {
     if (key === 'ENTER') {
